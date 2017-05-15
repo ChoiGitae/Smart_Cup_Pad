@@ -1,0 +1,142 @@
+#include <SoftwareSerial.h>
+#include "HX711.h"
+#define BUFF_SIZE 1000
+HX711 scale(A1, A0); // DOUT, SCK
+SoftwareSerial swSerial(2,3);
+
+uint8_t buffer[BUFF_SIZE];
+uint8_t index = 0;
+uint8_t index2 = 0;
+uint8_t data;
+int weight;
+int zerocheck = 0;
+int minuscheck = 0;
+int cuppluswater, water;
+int firstweightcheck = 0;
+int sendwater = 0;
+void setup()
+{
+Serial.begin(9600);
+swSerial.begin(9600);
+scale.set_scale(2280.f); //// this value is obtained by calibrating the scale with known weights
+scale.tare();
+}
+
+void loop()
+{
+  weight = scale.get_units();
+  sendwater = 0;
+  zerocheck = 0;
+  minuscheck = 0;
+  index = 0;
+  Serial.print("weight is : ");
+  Serial.print(weight);
+  Serial.print("\n");
+  if(weight > 50 && firstweightcheck == 0){
+    cuppluswater = weight;
+    firstweightcheck = 1;
+  }
+
+  if(weight < cuppluswater - 5 && weight > cuppluswater - 45 && firstweightcheck == 1){
+    water = cuppluswater - weight;
+    sendwater = 1;
+  }
+  while( sendwater == 1 )
+  {
+    if(weight < 0)
+    {
+      weight *= -1;
+      minuscheck = 1;
+    }
+    if(weight == 0 && zerocheck == 0)
+    {
+        buffer[index++] = 48;
+        break;
+    }
+    if(weight == 0 && zerocheck == 1)
+    {
+      break;
+    }
+   if(weight >= 0)
+      {
+        switch(weight % 10)
+        {
+        case 0 :
+        {
+          buffer[index++] = 48;
+          zerocheck = 1;
+          break;
+        }
+        case 1 : 
+        {
+          buffer[index++] = 49;
+          zerocheck = 1;
+          break;
+        }
+        case 2 : 
+        {
+          buffer[index++] = 50;
+          zerocheck = 1;
+          break;
+        }
+        case 3 : 
+        {
+          buffer[index++] = 51;
+          zerocheck = 1;
+          break;
+        }
+        case 4 : 
+        {
+          buffer[index++] = 52;
+          zerocheck = 1;
+          break;
+        }
+        case 5 : 
+        {
+          buffer[index++] = 53;
+          zerocheck = 1;
+          break;
+        }
+        case 6 : 
+        {
+          buffer[index++] = 54;
+          zerocheck = 1;
+          break;
+        }
+        case 7 : 
+        {
+          buffer[index++] = 55;
+          zerocheck = 1;
+          break;
+        }
+        case 8 : 
+        {
+          buffer[index++] = 56;
+          zerocheck = 1;
+          break;
+        }
+        case 9 : 
+          {
+          buffer[index++] = 57;
+          zerocheck = 1;
+          break;
+          }
+        }
+      }
+      weight /= 10;
+  }  
+  
+    if(minuscheck == 1)
+      buffer[index++] = 45;
+
+   Serial.write("buffer is : ");
+   
+   if(index != 0 && sendwater == 1){
+      for(int i = index-1; i >= 0  ; i--) {
+        swSerial.write(buffer[i]);
+       }
+       sendwater = 0;
+       firstweightcheck = 0;
+    }
+  delay(1000);
+}
